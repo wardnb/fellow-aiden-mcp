@@ -111,7 +111,7 @@ export function validateProfile(input: unknown): Profile {
 export const ScheduleSchema = z.object({
   profileId: z
     .string()
-    .regex(/^(p|plocal)\d+$/, "must be a profile id like p3")
+    .regex(/^(p|plocal|d)\d+$/, "must be a profile id like p3 (or a Fellow Drop like d165)")
     .describe("Profile to brew, e.g. p3"),
   days: z
     .array(z.boolean())

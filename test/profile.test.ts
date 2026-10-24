@@ -77,6 +77,7 @@ describe("schedules", () => {
     expect(ScheduleSchema.safeParse({ ...ok, time: "25:00" }).success).toBe(false);
     expect(ScheduleSchema.safeParse({ ...ok, amountOfWater: 1600 }).success).toBe(false);
     expect(ScheduleSchema.safeParse({ ...ok, profileId: "x1" }).success).toBe(false);
+    expect(ScheduleSchema.safeParse({ ...ok, profileId: "d165" }).success).toBe(true);
     expect(ScheduleSchema.safeParse({ ...ok, days: [true] }).success).toBe(false);
   });
 });

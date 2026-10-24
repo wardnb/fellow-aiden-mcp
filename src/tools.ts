@@ -48,7 +48,8 @@ const summarizeSchedule = (s: Json) => ({
 });
 
 const LibraryId = z.number().int().positive().describe("Library profile id (from library_search or brewer_status)");
-const AidenId = z.string().regex(/^(p|plocal)\d+$/, "Aiden profile ids look like p3");
+// p = custom, plocal = built-in, d = Fellow Drop (roaster profiles synced from Fellow).
+const AidenId = z.string().regex(/^(p|plocal|d)\d+$/, "Aiden profile ids look like p3, plocal0 or d165");
 const Confirm = z.literal(true).describe("Must be true. Set it only after the user has explicitly approved this change.");
 const ProfileChanges = ProfileFields.partial();
 const GrindHint = z
