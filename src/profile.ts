@@ -1,8 +1,12 @@
 /**
  * Brew profile and schedule validation.
  *
- * Ranges mirror what the Aiden accepts (ported from the community
- * `fellow-aiden` Python library). Temperatures are Celsius.
+ * Ranges mirror what the Aiden accepts. Temperatures are Celsius.
+ *
+ * Temperatures and pulse intervals are range-checked only. The community library
+ * required 0.5 °C steps and intervals of 5 s or more, but real profiles (made in the
+ * Fellow app, and Fellow's own Drops) use in-between temperatures (likely °F
+ * conversions) and shorter intervals, and the brewer accepts them.
  */
 import * as z from "zod";
 
@@ -21,13 +25,13 @@ export const RANGES = {
   ratio: "14–20 in 0.5 steps (grams of water per gram of coffee)",
   bloomRatio: "1–3 in 0.5 steps (bloom water as a multiple of coffee weight)",
   bloomDuration: "1–120 seconds",
-  temperature: "50–99 °C in 0.5 steps",
+  temperature: "50–99 °C (0.5 steps are typical)",
   pulsesNumber: "1–10",
-  pulsesInterval: "5–60 seconds between pulses",
+  pulsesInterval: "up to 60 seconds between pulses (5+ is typical)",
   title: "1–50 characters",
 } as const;
 
-const temp = steps(50, 99, 0.5);
+const temp = z.number().min(50).max(99);
 
 export const ProfileFields = z.object({
     title: z.string().min(1).max(50).describe(`Profile name, ${RANGES.title}`),
@@ -38,7 +42,7 @@ export const ProfileFields = z.object({
     bloomTemperature: temp.describe(`Bloom water temperature, ${RANGES.temperature}`),
     ssPulsesEnabled: z.boolean().describe("Pulse brewing for single-serve (cup) brews"),
     ssPulsesNumber: int(1, 10).describe(`Single-serve pulse count, ${RANGES.pulsesNumber}`),
-    ssPulsesInterval: int(5, 60).describe(`Single-serve pulse interval, ${RANGES.pulsesInterval}`),
+    ssPulsesInterval: z.number().min(0).max(60).describe(`Single-serve pulse interval, ${RANGES.pulsesInterval}`),
     ssPulseTemperatures: z
       .array(temp)
       .min(1)
@@ -46,7 +50,7 @@ export const ProfileFields = z.object({
       .describe(`Single-serve temperature per pulse, one entry per pulse, ${RANGES.temperature}`),
     batchPulsesEnabled: z.boolean().describe("Pulse brewing for batch (carafe) brews"),
     batchPulsesNumber: int(1, 10).describe(`Batch pulse count, ${RANGES.pulsesNumber}`),
-    batchPulsesInterval: int(5, 60).describe(`Batch pulse interval, ${RANGES.pulsesInterval}`),
+    batchPulsesInterval: z.number().min(0).max(60).describe(`Batch pulse interval, ${RANGES.pulsesInterval}`),
     batchPulseTemperatures: z
       .array(temp)
       .min(1)

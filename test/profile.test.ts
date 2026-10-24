@@ -29,12 +29,19 @@ describe("validateProfile", () => {
     ["bloom ratio off-step", { bloomRatio: 2.2 }],
     ["bloom too long", { bloomDuration: 121 }],
     ["temperature too hot", { bloomTemperature: 99.5 }],
-    ["pulse interval too short", { ssPulsesInterval: 4 }],
+    ["pulse interval too long", { ssPulsesInterval: 61 }],
+    ["pulse interval negative", { batchPulsesInterval: -1 }],
     ["too many pulses", { batchPulsesNumber: 11 }],
     ["title too long", { title: "x".repeat(51) }],
     ["temps don't match pulse count", { ssPulsesNumber: 2 }],
   ])("rejects %s", (_, change) => {
     expect(() => validateProfile({ ...base, ...change })).toThrow(/not valid/);
+  });
+
+  it("accepts real-world values seen on live brewers: off-step temps, short intervals", () => {
+    expect(() =>
+      validateProfile({ ...base, bloomTemperature: 93.3, ssPulseTemperatures: [96.1, 95.6, 94.4], ssPulsesInterval: 3, batchPulsesInterval: 0 }),
+    ).not.toThrow();
   });
 
   it("accepts edge values", () => {
