@@ -172,7 +172,8 @@ export function buildServer(env: ToolEnv): McpServer {
       title: "Remove profile from brewer",
       description:
         "Take a profile off the Aiden's menu. It stays in the library with its notes and ratings and can be loaded again. " +
-        "Profiles not yet in the library are saved there first. Refuses if a brew schedule uses the profile.",
+        "Profiles not yet in the library are saved there first. Refuses if a brew schedule uses the profile. " +
+        "Fellow Drops (ids like d165) and built-in profiles can't be removed.",
       inputSchema: z.object({
         aidenId: AidenId.describe("Profile id on the brewer, e.g. p3 (from brewer_status)"),
         confirm: Confirm,
@@ -185,6 +186,12 @@ export function buildServer(env: ToolEnv): McpServer {
       await client.getDevice(true);
       const profile = await client.findProfile(aidenId);
       if (profile.isDefaultProfile) throw new Error(`${aidenId} is one of Fellow's built-in profiles and can't be removed.`);
+      if (aidenId.startsWith("d")) {
+        throw new Error(
+          `"${profile.title}" is a Fellow Drop. Fellow manages Drops separately and its API doesn't allow removing them from the brewer. ` +
+            "It's still saved in the library. Suggest hiding it in the Fellow app if the app offers that.",
+        );
+      }
       const usedBy = (await client.getSchedules()).filter((s) => s.profileId === aidenId);
       if (usedBy.length) {
         throw new Error(`Schedule ${usedBy.map((s) => s.id).join(", ")} brews this profile. Delete or change that schedule first.`);

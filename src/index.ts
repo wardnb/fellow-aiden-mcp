@@ -32,7 +32,7 @@ const site: ExportedHandler<Env & { OAUTH_PROVIDER: AuthEnv["OAUTH_PROVIDER"] }>
          ${check(!!env.FELLOW_EMAIL && !!env.FELLOW_PASSWORD, "Fellow account secrets set")}
          ${check((env.ACCESS_PASSWORD ?? "").length >= 12, "Connector password set (12+ characters)")}
          ${check(!!env.DB, "Library database bound")}
-         <p>Add this URL as a custom connector in Claude, or as an MCP connector in ChatGPT:</p>
+         <p>Add this URL as a custom connector in your AI app (Claude, ChatGPT, Gemini, Le Chat):</p>
          <p><strong><code>${url.origin}/mcp</code></strong></p>`,
       );
     }

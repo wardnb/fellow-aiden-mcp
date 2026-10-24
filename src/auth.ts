@@ -142,7 +142,7 @@ const failureKey = (request: Request) =>
 const expired = () =>
   page(
     "Sign-in expired",
-    "<h1>This sign-in page expired</h1><p>Sign-in pages expire after 15 minutes. Start connecting again from Claude or ChatGPT.</p>",
+    "<h1>This sign-in page expired</h1><p>Sign-in pages expire after 15 minutes. Remove and re-add the connector in your AI app to start fresh.</p>",
     400,
   );
 
@@ -194,7 +194,7 @@ export async function handleAuthorize(request: Request, env: AuthEnv): Promise<R
     if (error instanceof AuthorizationError && error.redirectTo) return Response.redirect(error.redirectTo, 302);
     if (error instanceof AuthorizationError || error instanceof CimdFetchError) {
       const msg = error instanceof AuthorizationError ? error.description : "This app could not be verified.";
-      return page("Can't connect", `<h1>Can't connect</h1><p>${escape(msg ?? "The request was not valid.")}</p><p>Start connecting again from Claude.</p>`, 400);
+      return page("Can't connect", `<h1>Can't connect</h1><p>${escape(msg ?? "The request was not valid.")}</p><p>Remove and re-add the connector in your AI app to start fresh.</p>`, 400);
     }
     throw error;
   }
