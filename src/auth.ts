@@ -72,9 +72,25 @@ label{display:block;font-weight:600;margin:18px 0 6px}input[type=password]{width
 .row{display:flex;gap:10px;margin-top:20px}button{flex:1;padding:11px;border-radius:8px;border:1px solid var(--line);font:inherit;font-weight:600;cursor:pointer;background:var(--card);color:var(--ink)}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff}.warn{color:var(--warn)}code{font-size:.9em}`;
 
-export function page(title: string, body: string, status = 200, headers = new Headers()): Response {
+/**
+ * CSP source for where a form may end up. Browsers apply form-action to the redirect
+ * that follows a submit too, so the consent form must allow the client's redirect
+ * target (e.g. claude.ai) or the hand-back after "Allow" is silently blocked.
+ */
+function formTarget(redirectUri: string): string | null {
+  try {
+    const u = new URL(redirectUri);
+    if (u.protocol === "https:" || u.protocol === "http:") return u.origin;
+    return /^[a-z][a-z0-9+.-]*:$/i.test(u.protocol) ? u.protocol : null; // native app scheme
+  } catch {
+    return null;
+  }
+}
+
+export function page(title: string, body: string, status = 200, headers = new Headers(), formTargets: string[] = []): Response {
   headers.set("Content-Type", "text/html; charset=utf-8");
-  headers.set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'");
+  const formAction = ["'self'", ...formTargets].join(" ");
+  headers.set("Content-Security-Policy", `default-src 'none'; style-src 'unsafe-inline'; form-action ${formAction}; frame-ancestors 'none'`);
   headers.set("X-Frame-Options", "DENY");
   headers.set("Referrer-Policy", "no-referrer");
   return new Response(
@@ -102,6 +118,7 @@ function consentPage(d: ConsentDescription, state: string, error?: string) {
      </form>`,
     error ? 401 : 200,
     new Headers({ "Cache-Control": "no-store" }),
+    [formTarget(d.redirectUri)].filter((t): t is string => !!t),
   );
 }
 
