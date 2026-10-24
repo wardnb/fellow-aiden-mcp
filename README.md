@@ -1,4 +1,4 @@
-# Fellow Aiden connector for Claude
+# Fellow Aiden connector for Claude (and ChatGPT)
 
 Snap a photo of a coffee bag and let Claude design a brew profile for it, push it to your Fellow Aiden, and remember how it tasted.
 
@@ -34,6 +34,8 @@ The database and storage are created for you.
 **3. Connect Claude.** In Claude, add a custom connector and paste the `/mcp` URL. A sign-in page opens: enter your `ACCESS_PASSWORD` and click **Allow**.
 
 That's all. The brewing know-how (starting points by roast and process, how to adjust from tasting notes, the workflow) comes with the connector: it's sent to Claude when it connects.
+
+**Using ChatGPT instead?** It's a standard remote MCP server with OAuth (PKCE, dynamic registration and client metadata documents), so ChatGPT can connect to the same `/mcp` URL as a custom MCP connector — in ChatGPT that's done with developer mode turned on, where your plan allows it. Sign in with your `ACCESS_PASSWORD` the same way. ChatGPT may not use the brewing guide the server sends, so for best results paste the contents of [`skills/aiden-brewing/SKILL.md`](skills/aiden-brewing/SKILL.md) into a ChatGPT project's instructions.
 
 **4. Start.** Try: *"Look at what's on my Aiden and save it to my library."* Then add your gear: *"I use a Fellow Ode Gen 2 with the stock burrs, Aiden paper filters and Third Wave Water."* Then send a photo of a bag: *"Make me a profile for this."*
 

@@ -32,7 +32,7 @@ const site: ExportedHandler<Env & { OAUTH_PROVIDER: AuthEnv["OAUTH_PROVIDER"] }>
          ${check(!!env.FELLOW_EMAIL && !!env.FELLOW_PASSWORD, "Fellow account secrets set")}
          ${check((env.ACCESS_PASSWORD ?? "").length >= 12, "Connector password set (12+ characters)")}
          ${check(!!env.DB, "Library database bound")}
-         <p>Add this URL in Claude as a custom connector:</p>
+         <p>Add this URL as a custom connector in Claude, or as an MCP connector in ChatGPT:</p>
          <p><strong><code>${url.origin}/mcp</code></strong></p>`,
       );
     }
@@ -54,6 +54,8 @@ function providerFor(origin: string) {
       authorizeEndpoint: "/authorize",
       tokenEndpoint: "/token",
       clientRegistrationEndpoint: "/register",
+      // Client ID Metadata Documents: ChatGPT's preferred registration method (DCR still works for Claude).
+      clientIdMetadataDocumentEnabled: true,
       resourceMetadata: { resource: `${origin}/mcp`, resource_name: "Fellow Aiden" },
       accessTokenTTL: 60 * 60,
       refreshTokenTTL: 30 * 24 * 60 * 60,

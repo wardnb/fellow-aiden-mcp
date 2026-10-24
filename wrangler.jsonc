@@ -3,7 +3,8 @@
   "name": "fellow-aiden-mcp",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
-  "compatibility_flags": ["nodejs_compat"],
+  // global_fetch_strictly_public: required to fetch client metadata documents safely.
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "observability": { "enabled": true },
   // Bundle the brewing guide (skills/aiden-brewing/SKILL.md) as text; the server sends it to Claude as instructions.
   "rules": [{ "type": "Text", "globs": ["**/*.md"], "fallthrough": true }],
