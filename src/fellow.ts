@@ -115,14 +115,50 @@ export class FellowClient {
 
   // ---- device -----------------------------------------------------------
 
-  /** The account's brewer, with its profiles and schedules. Assumes one Aiden per account. */
+  /** What getDevice saw, for brewer_status diagnostics (no secrets). */
+  lastDeviceScan: { id: string; name: unknown; profiles: number; schedules: number; profilesFrom: string }[] = [];
+
+  /** A list field that may arrive bare or wrapped (e.g. `{ profiles: [...] }`). */
+  private static list(value: unknown, key: string): Json[] | null {
+    if (Array.isArray(value)) return value as Json[];
+    if (value && typeof value === "object" && Array.isArray((value as Json)[key])) return (value as Json)[key] as Json[];
+    return null;
+  }
+
+  /**
+   * The account's brewer, with its profiles and schedules.
+   *
+   * Profiles and schedules are read from the device record when Fellow bundles them,
+   * otherwise from the device's own /profiles and /schedules endpoints. When the account
+   * has several devices (e.g. an old registration), the one with profiles is chosen.
+   */
   async getDevice(refresh = false): Promise<Json> {
     if (this.device && !refresh) return this.device;
     const devices = await this.json("GET", "/devices", undefined, { dataType: "real" });
     if (!Array.isArray(devices) || devices.length === 0) {
       throw new FellowError("No Aiden brewer is registered to this Fellow account.");
     }
-    this.device = devices[0] as Json;
+    const scanned: Json[] = [];
+    this.lastDeviceScan = [];
+    for (const raw of devices as Json[]) {
+      const d: Json = { ...raw };
+      let profilesFrom = "device record";
+      let profiles = FellowClient.list(d.profiles, "profiles");
+      if (!profiles || profiles.length === 0) {
+        profiles = FellowClient.list(await this.json("GET", `/devices/${encodeURIComponent(String(d.id))}/profiles`).catch(() => null), "profiles") ?? [];
+        profilesFrom = "profiles endpoint";
+      }
+      let schedules = FellowClient.list(d.schedules, "schedules");
+      if (!schedules) {
+        schedules = FellowClient.list(await this.json("GET", `/devices/${encodeURIComponent(String(d.id))}/schedules`).catch(() => null), "schedules") ?? [];
+      }
+      d.profiles = profiles;
+      d.schedules = schedules;
+      scanned.push(d);
+      this.lastDeviceScan.push({ id: `…${String(d.id).slice(-6)}`, name: d.displayName ?? null, profiles: profiles.length, schedules: schedules.length, profilesFrom });
+    }
+    // Prefer the brewer that actually holds profiles; ties keep Fellow's order.
+    this.device = scanned.reduce((best, d) => ((d.profiles as Json[]).length > (best.profiles as Json[]).length ? d : best));
     return this.device;
   }
 

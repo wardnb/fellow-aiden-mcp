@@ -111,7 +111,13 @@ export function buildServer(env: ToolEnv): McpServer {
           inLibrary: entry ? { libraryId: entry.id, version: entry.version } : false,
         };
       });
-      return ok({ brewer: device.displayName ?? null, profiles, schedules: ((device.schedules as Json[]) ?? []).map(summarizeSchedule) });
+      return ok({
+        brewer: device.displayName ?? null,
+        profiles,
+        schedules: ((device.schedules as Json[]) ?? []).map(summarizeSchedule),
+        // Every device on the Fellow account and where its profiles came from; useful when the list looks wrong.
+        devicesOnAccount: client.lastDeviceScan,
+      });
     }),
   );
 
