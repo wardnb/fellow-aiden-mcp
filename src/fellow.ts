@@ -88,7 +88,7 @@ export class FellowClient {
       });
 
     let res = await send(await this.getToken());
-    if (res.status === 401 || res.status === 403) {
+    if (res.status === 401) {
       // Cached token expired: log in again once and retry.
       await this.env.OAUTH_KV.delete(TOKEN_KEY);
       this.token = null;

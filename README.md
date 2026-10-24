@@ -17,7 +17,7 @@ It runs free on Cloudflare Workers. Nothing runs on your home network.
 
 **1. Deploy.** Click the button and sign in to Cloudflare (a free account is fine, no card needed).
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/YOUR_GITHUB_USER/fellow-aiden-mcp)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/wardnb/fellow-aiden-mcp)
 
 The setup screen asks for three secrets:
 

@@ -70,7 +70,13 @@ async function passwordMatches(given: string, expected: string) {
   return crypto.subtle.timingSafeEqual(a, b);
 }
 
-const failureKey = () => `auth:failures:${new Date().toISOString().slice(0, 13)}`;
+/**
+ * Failed attempts are counted per client IP per hour. Per-IP (not global) so a stranger
+ * can't lock the owner out by burning attempts. KV is eventually consistent, so this is a
+ * speed bump against casual guessing; the real defense is a long ACCESS_PASSWORD.
+ */
+const failureKey = (request: Request) =>
+  `auth:failures:${request.headers.get("CF-Connecting-IP") ?? "unknown"}:${new Date().toISOString().slice(0, 13)}`;
 
 export async function handleAuthorize(request: Request, env: AuthEnv): Promise<Response> {
   if (!env.ACCESS_PASSWORD || env.ACCESS_PASSWORD.length < MIN_PASSWORD_LENGTH) {
@@ -95,13 +101,14 @@ export async function handleAuthorize(request: Request, env: AuthEnv): Promise<R
       return new Response(null, { status: 302, headers: denied.headers });
     }
 
-    const key = failureKey();
+    const key = failureKey(request);
     const failures = Number((await env.OAUTH_KV.get(key)) ?? 0);
     if (failures >= MAX_FAILURES_PER_HOUR) {
-      return page("Locked", "<h1>Too many attempts</h1><p>Sign-in is paused for the rest of this hour.</p>", 429);
+      return page("Locked", "<h1>Too many attempts</h1><p>Sign-in from this network is paused for the rest of this hour.</p>", 429);
     }
     if (!(await passwordMatches(String(form.get("password") ?? ""), env.ACCESS_PASSWORD))) {
-      await env.OAUTH_KV.put(key, String(failures + 1), { expirationTtl: 3600 });
+      // KV allows ~1 write/sec per key; a dropped increment must not turn into a 500.
+      await env.OAUTH_KV.put(key, String(failures + 1), { expirationTtl: 3600 }).catch(() => {});
       return page("Wrong password", '<h1>Wrong password</h1><p>Go back and try again.</p>', 401);
     }
 

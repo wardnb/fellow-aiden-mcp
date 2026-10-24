@@ -64,15 +64,17 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS tastings_profile ON tastings(profile_id)`,
 ];
 
-let ready: Promise<unknown> | null = null;
+let schemaReady = false;
 
-/** Create tables on first use, so a one-click deploy needs no migration step. */
-export function ensureSchema(db: D1Database) {
-  ready ??= db.batch(SCHEMA.map((s) => db.prepare(s))).catch((e) => {
-    ready = null;
-    throw e;
-  });
-  return ready;
+/**
+ * Create tables on first use, so a one-click deploy needs no migration step.
+ * Each request runs its own idempotent batch until one succeeds; no promise is
+ * shared across requests.
+ */
+export async function ensureSchema(db: D1Database) {
+  if (schemaReady) return;
+  await db.batch(SCHEMA.map((s) => db.prepare(s)));
+  schemaReady = true;
 }
 
 export interface CoffeeInput {
@@ -266,10 +268,28 @@ export class Library {
     await this.db.prepare(`UPDATE profiles SET aiden_id = ? WHERE id = ?`).bind(aidenId, id).run();
   }
 
-  async byAidenIds() {
+  /**
+   * Library entries currently on the brewer, keyed by Aiden id, after dropping stale links.
+   *
+   * Aiden ids (p3, p4…) are reused once a profile is deleted, including deletions made
+   * in the Fellow app. A link only counts if that id is still on the brewer with the
+   * same title; otherwise it's cleared so we never act on someone else's profile.
+   */
+  async links(brewerProfiles: { id?: unknown; title?: unknown }[]) {
     await this.init();
-    const rows = (await this.db.prepare(`SELECT id, title, version, aiden_id FROM profiles WHERE aiden_id IS NOT NULL`).all()).results;
-    return new Map(rows.map((r: any) => [String(r.aiden_id), r]));
+    const onBrewer = new Map(brewerProfiles.map((p) => [String(p.id), String(p.title ?? "")]));
+    const rows = (await this.db.prepare(`SELECT id, title, version, aiden_id FROM profiles WHERE aiden_id IS NOT NULL`).all()).results as any[];
+    const valid = new Map<string, any>();
+    const stale: number[] = [];
+    for (const r of rows) {
+      const aidenId = String(r.aiden_id);
+      if (onBrewer.get(aidenId) === r.title && !valid.has(aidenId)) valid.set(aidenId, r);
+      else stale.push(r.id);
+    }
+    if (stale.length) {
+      await this.db.batch(stale.map((id) => this.db.prepare(`UPDATE profiles SET aiden_id = NULL WHERE id = ?`).bind(id)));
+    }
+    return valid;
   }
 
   // ---- tastings ---------------------------------------------------------

@@ -56,6 +56,7 @@ function providerFor(origin: string) {
       clientRegistrationEndpoint: "/register",
       resourceMetadata: { resource: `${origin}/mcp`, resource_name: "Fellow Aiden" },
       accessTokenTTL: 60 * 60,
+      refreshTokenTTL: 30 * 24 * 60 * 60,
     });
     providers.set(origin, provider);
   }
@@ -64,6 +65,13 @@ function providerFor(origin: string) {
 
 export default {
   fetch(request: Request, env: Env, ctx: ExecutionContext) {
-    return providerFor(new URL(request.url).origin).fetch(request, env, ctx);
+    const url = new URL(request.url);
+    const local = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+    if (url.protocol === "http:" && !local) {
+      // Never serve the password form or tokens over plain HTTP.
+      url.protocol = "https:";
+      return Response.redirect(url.toString(), 308);
+    }
+    return providerFor(url.origin).fetch(request, env, ctx);
   },
 } satisfies ExportedHandler<Env>;
