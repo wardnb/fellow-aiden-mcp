@@ -14,7 +14,7 @@ import { ProfileFields, ProfileSchema, ScheduleSchema, pickProfileFields, schedu
 
 export type ToolEnv = FellowEnv & DbEnv;
 
-/** The brewing skill, minus its frontmatter, sent to Claude as server instructions on connect. */
+/** The brewing skill, minus its frontmatter, sent to the AI app as server instructions on connect. */
 export const INSTRUCTIONS = brewingGuide.replace(/^---[\s\S]*?\n---\n/, "").trim();
 
 type Result = { content: { type: "text"; text: string }[]; isError?: boolean };

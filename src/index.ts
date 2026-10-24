@@ -2,7 +2,7 @@
  * Fellow Aiden MCP connector — Cloudflare Worker entry point.
  *
  *   /mcp         MCP endpoint (OAuth bearer token required)
- *   /authorize   sign-in page shown when Claude connects
+ *   /authorize   sign-in page shown when an AI app connects
  *   /token, /register, /.well-known/*   handled by the OAuth library
  *   /            setup status page
  */
@@ -54,7 +54,7 @@ function providerFor(origin: string) {
       authorizeEndpoint: "/authorize",
       tokenEndpoint: "/token",
       clientRegistrationEndpoint: "/register",
-      // Client ID Metadata Documents: ChatGPT's preferred registration method (DCR still works for Claude).
+      // Client ID Metadata Documents: ChatGPT's preferred registration method (dynamic registration covers the other apps).
       clientIdMetadataDocumentEnabled: true,
       resourceMetadata: { resource: `${origin}/mcp`, resource_name: "Fellow Aiden" },
       accessTokenTTL: 60 * 60,

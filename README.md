@@ -51,7 +51,7 @@ Works on every plan, including Free (Free allows one custom connector).
 3. Keep the detected sign-in settings and click **Add**, then sign in.
 4. In a chat, use **+ → Connectors** to make sure it's turned on.
 
-The brewing guide reaches Claude automatically when it connects.
+The brewing guide (how to design and adjust profiles) reaches Claude automatically when it connects.
 
 ### ChatGPT
 
@@ -129,7 +129,7 @@ AI app ──OAuth──▶ Cloudflare Worker ──HTTPS──▶ Fellow cloud 
 - **Fellow credentials** are stored as encrypted Worker secrets and sent only to Fellow. Fellow has no scoped API keys, so this is your full account password; treat the Worker accordingly.
 - **Guardrails.** Profiles are checked against the Aiden's limits before anything is sent. Revising, unloading and deleting need explicit confirmation. Built-in Fellow profiles can't be changed, and profiles used by a schedule can't be unloaded. Links between the library and the brewer are re-checked before every change, because brewer IDs get reused after deletions.
 - **The library database** creates its own tables on first use, so there are no migrations to run.
-- **The brewing guide** lives in [`skills/aiden-brewing/SKILL.md`](skills/aiden-brewing/SKILL.md). It's bundled into the Worker and sent as the server's instructions. To change how profiles are designed and adjusted, edit that file and redeploy. You can also upload the folder as a Claude skill, but you don't need to.
+- **The brewing guide** lives in [`skills/aiden-brewing/SKILL.md`](skills/aiden-brewing/SKILL.md). It's bundled into the Worker and sent as the server's instructions. To change how profiles are designed and adjusted, edit that file and redeploy. For apps that ignore server instructions, paste it into a project, Gem or custom instructions. In Claude it can also be uploaded as a skill, but that isn't needed.
 - **Multiple brewers:** if your Fellow account has more than one device, the one holding profiles is used.
 
 ## Tools

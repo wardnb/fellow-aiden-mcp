@@ -1,12 +1,12 @@
 /**
  * Single-user sign-in for the connector.
  *
- * When Claude connects, the user lands on /authorize, enters the ACCESS_PASSWORD
+ * When an AI app connects, the user lands on /authorize, enters the ACCESS_PASSWORD
  * set at deploy time, and approves. The OAuth library handles tokens, PKCE and
  * client registration; this file renders the page and checks the password.
  *
- * No cookies and no storage lookups: some in-app sign-in windows (e.g. the Claude
- * mobile app) don't keep cookies, and KV doesn't guarantee a fresh write is readable
+ * No cookies and no storage lookups: some in-app sign-in windows (e.g. mobile
+ * apps) don't keep cookies, and KV doesn't guarantee a fresh write is readable
  * right away. So the validated authorization request travels in the form, signed
  * with HMAC (key derived from ACCESS_PASSWORD) and expiring after 15 minutes. On
  * submit the signature, expiry, client and redirect URI are all re-checked. The

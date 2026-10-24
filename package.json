@@ -1,7 +1,7 @@
 {
   "name": "fellow-aiden-mcp",
   "version": "1.0.0",
-  "description": "Manage Fellow Aiden brew profiles from Claude: photo a bag, get a profile, keep tasting notes.",
+  "description": "Manage Fellow Aiden brew profiles from your AI assistant (Claude, ChatGPT, Gemini, Le Chat): photo a bag, get a profile, keep tasting notes.",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
@@ -31,7 +31,7 @@
         "description": "Your Fellow app password. Stored encrypted as a Worker secret; only sent to Fellow."
       },
       "ACCESS_PASSWORD": {
-        "description": "A new password you make up, **12+ characters**. You type it once when connecting Claude, so nobody else who finds your URL can use it."
+        "description": "A new password you make up, **12+ characters**. You type it once when connecting your AI app, so nobody else who finds your URL can use it."
       },
       "OAUTH_KV": {
         "description": "Stores sign-in state. Created for you."
