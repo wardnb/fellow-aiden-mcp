@@ -33,9 +33,9 @@ The database and storage are created for you.
 
 **3. Connect Claude.** In Claude, add a custom connector and paste the `/mcp` URL. A sign-in page opens: enter your `ACCESS_PASSWORD` and click **Allow**.
 
-**4. Add the skill (recommended).** Zip the `skills/aiden-brewing` folder and upload it as a skill in Claude. It teaches Claude the starting points by roast and process, how to adjust from tasting notes, and the workflow.
+That's all. The brewing know-how (starting points by roast and process, how to adjust from tasting notes, the workflow) comes with the connector: it's sent to Claude when it connects.
 
-**5. Start.** Try: *"Look at what's on my Aiden and save it to my library."* Then add your gear: *"I use a Fellow Ode Gen 2 with the stock burrs, Aiden paper filters and Third Wave Water."* Then send a photo of a bag: *"Make me a profile for this."*
+**4. Start.** Try: *"Look at what's on my Aiden and save it to my library."* Then add your gear: *"I use a Fellow Ode Gen 2 with the stock burrs, Aiden paper filters and Third Wave Water."* Then send a photo of a bag: *"Make me a profile for this."*
 
 ## Things to ask
 
@@ -59,6 +59,7 @@ Claude ──OAuth──▶ Cloudflare Worker ──HTTPS──▶ Fellow cloud 
 - **Fellow credentials** are stored as encrypted Worker secrets and sent only to Fellow. Fellow has no scoped API keys, so this is your full account password; treat the Worker accordingly.
 - **Guardrails.** Profiles are validated against the Aiden's limits before anything is sent. Revising, unloading and deleting require explicit confirmation. Built-in Fellow profiles can't be changed. Profiles used by a schedule can't be unloaded.
 - The **library database** creates its own tables on first use, so there are no migrations to run.
+- The **brewing guide** lives in [`skills/aiden-brewing/SKILL.md`](skills/aiden-brewing/SKILL.md). It's bundled into the Worker and sent as the server's instructions. To change how Claude designs and adjusts profiles, edit that file and redeploy. You can also upload the folder as a Claude skill, but you don't need to.
 
 ## Tools
 

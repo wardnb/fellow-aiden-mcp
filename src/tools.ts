@@ -9,9 +9,13 @@ import { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod";
 import { Library, type DbEnv } from "./db";
 import { FellowClient, type FellowEnv, type Json } from "./fellow";
+import brewingGuide from "../skills/aiden-brewing/SKILL.md";
 import { ProfileFields, ProfileSchema, ScheduleSchema, pickProfileFields, scheduleToApi, validateProfile } from "./profile";
 
 export type ToolEnv = FellowEnv & DbEnv;
+
+/** The brewing skill, minus its frontmatter, sent to Claude as server instructions on connect. */
+export const INSTRUCTIONS = brewingGuide.replace(/^---[\s\S]*?\n---\n/, "").trim();
 
 type Result = { content: { type: "text"; text: string }[]; isError?: boolean };
 
@@ -65,7 +69,7 @@ const CoffeeFields = {
 };
 
 export function buildServer(env: ToolEnv): McpServer {
-  const server = new McpServer({ name: "fellow-aiden", version: "1.0.0" });
+  const server = new McpServer({ name: "fellow-aiden", version: "1.1.0" }, { instructions: INSTRUCTIONS });
   const aiden = () => new FellowClient(env);
   const lib = () => new Library(env.DB);
 
