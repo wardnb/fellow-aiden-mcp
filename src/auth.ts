@@ -5,11 +5,12 @@
  * set at deploy time, and approves. The OAuth library handles tokens, PKCE and
  * client registration; this file renders the page and checks the password.
  *
- * No cookies: some in-app sign-in windows (e.g. the Claude mobile app) don't keep
- * cookies between opening the page and submitting it. The validated authorization
- * request is kept server-side in KV under a random, single-use id, and only that
- * id travels in the form. The password itself is what stops forged approvals, and
- * the page can't be framed.
+ * No cookies and no storage lookups: some in-app sign-in windows (e.g. the Claude
+ * mobile app) don't keep cookies, and KV doesn't guarantee a fresh write is readable
+ * right away. So the validated authorization request travels in the form, signed
+ * with HMAC (key derived from ACCESS_PASSWORD) and expiring after 15 minutes. On
+ * submit the signature, expiry, client and redirect URI are all re-checked. The
+ * password is what stops forged approvals, and the page can't be framed.
  */
 import {
   AuthorizationError,
@@ -28,8 +29,36 @@ export interface AuthEnv {
 
 const MAX_FAILURES_PER_HOUR = 10;
 const MIN_PASSWORD_LENGTH = 12;
-const PENDING_TTL_SECONDS = 15 * 60;
-const pendingKey = (id: string) => `auth:pending:${id}`;
+const PENDING_TTL_MS = 15 * 60 * 1000;
+
+const b64url = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const unb64url = (s: string) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+
+async function stateKey(password: string) {
+  const raw = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`aiden-connector/consent-state/v1:${password}`));
+  return crypto.subtle.importKey("raw", raw, { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
+}
+
+/** Sign a validated auth request into a form token: payload.signature */
+async function sealState(req: AuthRequest, password: string) {
+  const payload = new TextEncoder().encode(JSON.stringify({ r: req, e: Date.now() + PENDING_TTL_MS }));
+  const sig = new Uint8Array(await crypto.subtle.sign("HMAC", await stateKey(password), payload));
+  return `${b64url(payload)}.${b64url(sig)}`;
+}
+
+/** Verify a form token; returns the auth request, or null if forged, malformed or expired. */
+async function openState(token: string, password: string): Promise<AuthRequest | null> {
+  try {
+    const [p, sig, extra] = token.split(".");
+    if (!p || !sig || extra !== undefined || token.length > 16384) return null;
+    const payload = unb64url(p);
+    if (!(await crypto.subtle.verify("HMAC", await stateKey(password), unb64url(sig), payload))) return null;
+    const { r, e } = JSON.parse(new TextDecoder().decode(payload));
+    return typeof e === "number" && e > Date.now() ? (r as AuthRequest) : null;
+  } catch {
+    return null;
+  }
+}
 
 const escape = (v: string) => v.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
@@ -54,7 +83,7 @@ export function page(title: string, body: string, status = 200, headers = new He
   );
 }
 
-function consentPage(d: ConsentDescription, pendingId: string, error?: string) {
+function consentPage(d: ConsentDescription, state: string, error?: string) {
   const who = d.clientDomain
     ? `<strong>${escape(d.clientName)}</strong> (published by <strong>${escape(d.clientDomain)}</strong>)`
     : `<strong>${escape(d.clientName)}</strong> <span class="warn">(name not verified)</span>`;
@@ -66,7 +95,7 @@ function consentPage(d: ConsentDescription, pendingId: string, error?: string) {
      ${d.redirectIsLoopback ? '<p class="warn">This sends access to an app on your own computer. Continue only if you just started connecting from it.</p>' : ""}
      ${error ? `<p class="warn"><strong>${escape(error)}</strong></p>` : ""}
      <form method="post">
-       <input type="hidden" name="pending" value="${escape(pendingId)}">
+       <input type="hidden" name="state" value="${escape(state)}">
        <label for="pw">Connector password</label>
        <input id="pw" type="password" name="password" autocomplete="current-password" autofocus>
        <div class="row"><button name="decision" value="deny">Deny</button><button class="primary" name="decision" value="approve">Allow</button></div>
@@ -96,7 +125,7 @@ const failureKey = (request: Request) =>
 const expired = () =>
   page(
     "Sign-in expired",
-    "<h1>This sign-in page expired</h1><p>Sign-in pages work once and expire after 15 minutes. Start connecting again from Claude.</p>",
+    "<h1>This sign-in page expired</h1><p>Sign-in pages expire after 15 minutes. Start connecting again from Claude or ChatGPT.</p>",
     400,
   );
 
@@ -109,21 +138,19 @@ export async function handleAuthorize(request: Request, env: AuthEnv): Promise<R
     if (request.method === "GET") {
       const authRequest = await oauth.parseAuthRequest(request); // validates client, redirect URI, PKCE
       const details = await oauth.describeConsent(authRequest);
-      const pendingId = [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, "0")).join("");
-      await env.OAUTH_KV.put(pendingKey(pendingId), JSON.stringify(authRequest), { expirationTtl: PENDING_TTL_SECONDS });
-      return consentPage(details, pendingId);
+      return consentPage(details, await sealState(authRequest, env.ACCESS_PASSWORD));
     }
 
     if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
     const form = await request.formData();
-    const pendingId = String(form.get("pending") ?? "");
-    if (!/^[0-9a-f]{64}$/.test(pendingId)) return expired();
-    const stored = await env.OAUTH_KV.get(pendingKey(pendingId));
-    if (!stored) return expired();
-    const authRequest = JSON.parse(stored) as AuthRequest;
+    const state = String(form.get("state") ?? "");
+    const authRequest = await openState(state, env.ACCESS_PASSWORD);
+    if (!authRequest) return expired();
+    // Defense in depth: the client must still exist and still own this redirect URI.
+    const client = await oauth.lookupClient(authRequest.clientId);
+    if (!client || !client.redirectUris.includes(authRequest.redirectUri)) return expired();
 
     if (form.get("decision") !== "approve") {
-      await env.OAUTH_KV.delete(pendingKey(pendingId));
       return Response.redirect(authorizationErrorRedirect(authRequest, "access_denied"), 302);
     }
 
@@ -135,10 +162,9 @@ export async function handleAuthorize(request: Request, env: AuthEnv): Promise<R
     if (!(await passwordMatches(String(form.get("password") ?? ""), env.ACCESS_PASSWORD))) {
       // KV allows ~1 write/sec per key; a dropped increment must not turn into a 500.
       await env.OAUTH_KV.put(key, String(failures + 1), { expirationTtl: 3600 }).catch(() => {});
-      return consentPage(await oauth.describeConsent(authRequest), pendingId, "Wrong password. Try again.");
+      return consentPage(await oauth.describeConsent(authRequest), state, "Wrong password. Try again.");
     }
 
-    await env.OAUTH_KV.delete(pendingKey(pendingId)); // single use
     const { redirectTo } = await oauth.completeAuthorization({
       request: authRequest,
       userId: "owner",
