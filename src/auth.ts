@@ -40,7 +40,7 @@ export function page(title: string, body: string, status = 200, headers = new He
   );
 }
 
-function consentPage(d: ConsentDescription, handle: string, headers: Headers) {
+function consentPage(d: ConsentDescription, handle: string, headers: Headers, error?: string) {
   const who = d.clientDomain
     ? `<strong>${escape(d.clientName)}</strong> (published by <strong>${escape(d.clientDomain)}</strong>)`
     : `<strong>${escape(d.clientName)}</strong> <span class="warn">(name not verified)</span>`;
@@ -50,15 +50,28 @@ function consentPage(d: ConsentDescription, handle: string, headers: Headers) {
      <p>${who} wants to manage your brew profiles, coffee library and schedules.</p>
      <p>Access goes to <strong>${escape(d.redirectHost)}</strong>.</p>
      ${d.redirectIsLoopback ? '<p class="warn">This sends access to an app on your own computer. Continue only if you just started connecting from it.</p>' : ""}
+     ${error ? `<p class="warn"><strong>${escape(error)}</strong></p>` : ""}
      <form method="post">
        <input type="hidden" name="handle" value="${escape(handle)}">
        <label for="pw">Connector password</label>
        <input id="pw" type="password" name="password" autocomplete="current-password" autofocus>
        <div class="row"><button name="decision" value="deny">Deny</button><button class="primary" name="decision" value="approve">Allow</button></div>
      </form>`,
-    200,
+    error ? 401 : 200,
     headers,
   );
+}
+
+/** Merge response headers, keeping every Set-Cookie (Headers.set would drop all but one). */
+function mergeHeaders(...all: Headers[]) {
+  const out = new Headers();
+  for (const h of all) {
+    h.forEach((value, name) => {
+      if (name.toLowerCase() !== "set-cookie") out.set(name, value);
+    });
+    for (const cookie of h.getSetCookie()) out.append("Set-Cookie", cookie);
+  }
+  return out;
 }
 
 async function sha256(s: string) {
@@ -106,13 +119,17 @@ export async function handleAuthorize(request: Request, env: AuthEnv): Promise<R
     if (failures >= MAX_FAILURES_PER_HOUR) {
       return page("Locked", "<h1>Too many attempts</h1><p>Sign-in from this network is paused for the rest of this hour.</p>", 429);
     }
+    // Consume this form either way; a wrong password gets a fresh form for the same request,
+    // so the user can retry in place instead of hitting an expired page.
+    const approved = await oauth.approveConsent(request, handle);
     if (!(await passwordMatches(String(form.get("password") ?? ""), env.ACCESS_PASSWORD))) {
       // KV allows ~1 write/sec per key; a dropped increment must not turn into a 500.
       await env.OAUTH_KV.put(key, String(failures + 1), { expirationTtl: 3600 }).catch(() => {});
-      return page("Wrong password", '<h1>Wrong password</h1><p>Go back and try again.</p>', 401);
+      const details = await oauth.describeConsent(approved.request);
+      const retry = await oauth.beginConsent(approved.request);
+      return consentPage(details, retry.handle, mergeHeaders(approved.headers, retry.headers), "Wrong password. Try again.");
     }
 
-    const approved = await oauth.approveConsent(request, handle);
     const { redirectTo } = await oauth.completeAuthorization({
       request: approved.request,
       userId: "owner",
@@ -126,7 +143,7 @@ export async function handleAuthorize(request: Request, env: AuthEnv): Promise<R
     if (error instanceof AuthorizationError && error.redirectTo) return Response.redirect(error.redirectTo, 302);
     if (error instanceof AuthorizationError || error instanceof CimdFetchError) {
       const msg = error instanceof AuthorizationError ? error.description : "This app could not be verified.";
-      return page("Can't connect", `<h1>Can't connect</h1><p>${escape(msg ?? "The request was not valid.")}</p><p>Start connecting again from Claude.</p>`, 400);
+      return page("Can't connect", `<h1>Can't connect</h1><p>${escape(msg ?? "The request was not valid.")}</p><p>Sign-in pages work once, for 10 minutes, in the browser that opened them. Start connecting again from Claude.</p>`, 400);
     }
     throw error;
   }
