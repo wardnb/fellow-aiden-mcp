@@ -1,0 +1,3 @@
+FELLOW_EMAIL=you@example.com # Fellow app login email
+FELLOW_PASSWORD=your-fellow-password # Fellow app password
+ACCESS_PASSWORD=make-up-a-long-password # 12+ characters; you type it once when connecting Claude

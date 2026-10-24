@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fellow-aiden-mcp",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // OAuth state, and a short-lived cache of the Fellow login token.
+  "kv_namespaces": [{ "binding": "OAUTH_KV" }],
+  // Your profile library: coffees, profile versions, tasting notes, equipment.
+  "d1_databases": [{ "binding": "DB", "database_name": "aiden-library" }]
+}

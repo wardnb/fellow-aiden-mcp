@@ -1,0 +1,44 @@
+{
+  "name": "fellow-aiden-mcp",
+  "version": "1.0.0",
+  "description": "Manage Fellow Aiden brew profiles from Claude: photo a bag, get a profile, keep tasting notes.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc",
+    "test": "vitest run"
+  },
+  "license": "GPL-3.0-only",
+  "dependencies": {
+    "@cloudflare/workers-oauth-provider": "^1.2.4",
+    "@modelcontextprotocol/server": "^2.4.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261024.1",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.5",
+    "wrangler": "^4.152.0"
+  },
+  "private": true,
+  "type": "module",
+  "cloudflare": {
+    "bindings": {
+      "FELLOW_EMAIL": {
+        "description": "The email you sign in to the **Fellow app** with (the account your Aiden is registered to)."
+      },
+      "FELLOW_PASSWORD": {
+        "description": "Your Fellow app password. Stored encrypted as a Worker secret; only sent to Fellow."
+      },
+      "ACCESS_PASSWORD": {
+        "description": "A new password you make up, **12+ characters**. You type it once when connecting Claude, so nobody else who finds your URL can use it."
+      },
+      "OAUTH_KV": {
+        "description": "Stores sign-in state. Created for you."
+      },
+      "DB": {
+        "description": "Your coffee library: profiles, tasting notes, ratings, equipment. Created for you."
+      }
+    }
+  }
+}
